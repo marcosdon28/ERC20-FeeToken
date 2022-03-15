@@ -12,7 +12,6 @@ contract ProjectFee is IERC20, Ownable{
     mapping(address=>uint) balances;
     mapping (address => mapping (address => uint)) allowed;
     mapping(address => bool) isExcluded;
-    mapping(address => uint) partOfPool;
     uint256 totalSupply_;
     address marketingAddress = 0xdD870fA1b7C4700F2BD7f44238821C26f7392148;
     uint ownerFeeReward_ = 5;
@@ -21,6 +20,7 @@ contract ProjectFee is IERC20, Ownable{
     uint burnedFeePercent_ = 3;
     uint nativeTokenFee_ = 2;
     uint burnedTokens;
+    uint public tokensForHolders;
     
     uint totalFee_ = ownerFeeReward_ + marketingFeeReward_ + holdersFeeReward_ + burnedFeePercent_ + nativeTokenFee_ ;
 
@@ -43,11 +43,13 @@ contract ProjectFee is IERC20, Ownable{
 
     }
     function totalSupply() public override view returns (uint256){
-        return totalSupply_;
+        return totalSupply_ - burnedTokens;
     }
 
-    function balanceOf(address tokenOwner) public override view returns (uint256){
-        return balances[tokenOwner];
+    function balanceOf(address tokenOwner) public override view returns(uint256){
+        uint part = (balances[tokenOwner] * 100 ) / totalSupply_;
+        uint balance = (balances[tokenOwner] + ((tokensForHolders * part) / 100));
+        return balance;
     }
 
     function allowance(address owner, address delegate) public override view returns (uint256){
@@ -55,13 +57,12 @@ contract ProjectFee is IERC20, Ownable{
     }
 
     function transfer(address recipient, uint256 numTokens) public override returns (bool){
-        determinePartOfPool();
-        require(numTokens <=balances[msg.sender]); 
+        balances[msg.sender] = balanceOf(msg.sender);
+        require(numTokens <=balances[msg.sender]);
         if(isExcluded[msg.sender] !=false){
             balances[msg.sender]=balances[msg.sender] - (numTokens);
             balances[recipient]=balances[recipient] + (numTokens);
             emit Transfer(msg.sender, recipient, numTokens);
-            return true;
         }
         else{
             balances[msg.sender]=balances[msg.sender] - (numTokens);
@@ -72,17 +73,22 @@ contract ProjectFee is IERC20, Ownable{
             uint marketingReward = (marketingFeeReward_ * numTokens) / 100;
             //calculating part to burn
             uint burnedAmount = (burnedFeePercent_ * numTokens) / 100 ;
+            //calculating part for holders
+            uint holdersReward = (holdersFeeReward_ * numTokens) / 100;
             
+
+            //distribute the rewards
             burnedTokens += burnedAmount;
-            totalSupply_ -= burnedAmount;
             balances[owner()] += ownerReward;
             balances[marketingAddress] += marketingReward;
+            tokensForHolders += holdersReward;
 
-            uint amountToRecipient = numTokens - (ownerReward + burnedTokens);
+            uint amountToRecipient = numTokens - (ownerReward + burnedAmount + marketingReward + holdersReward );
             balances[recipient] += amountToRecipient;
-            emit Transfer(msg.sender, recipient, numTokens);
-            return true;
+            numTokens = amountToRecipient;
         }
+        emit Transfer(msg.sender, recipient, numTokens);
+        return true;
     }
 
     function approve(address delegate, uint256 numTokens) public override returns (bool){
@@ -104,10 +110,6 @@ contract ProjectFee is IERC20, Ownable{
         balances[buyer]=balances[buyer] + (numTokens);
         emit Transfer (owner, buyer, numTokens);
         return true;
-    }
-
-    function totalFees()public view returns(uint){
-        return totalFee_;
     }
 
     function changeOwnerRewardFee(uint _fee)public onlyOwner correctFee(_fee){
@@ -158,13 +160,4 @@ contract ProjectFee is IERC20, Ownable{
         return isExcluded[msg.sender];
     }
 
-    function determinePartOfPool()public onlyOwner{
-        uint balance = balances[msg.sender];
-        uint part = (balance * 100 ) / totalSupply_;
-        partOfPool[msg.sender] = part;
-
-    }
-    function viewPartOfPool()public view returns(uint){
-        return partOfPool[msg.sender];
-    }
 }
