@@ -11,16 +11,17 @@ contract ProjectFee is IERC20, Ownable{
     
     mapping(address=>uint) balances;
     mapping (address => mapping (address => uint)) allowed;
-    
-    
+    mapping(address => bool) isExcluded;
+    mapping(address => uint) partOfPool;
     uint256 totalSupply_;
-    address marketingAddress = 0x28df3d8c734D1ef31B7AB18c0133deb10BC7B9ED;
+    address marketingAddress = 0xdD870fA1b7C4700F2BD7f44238821C26f7392148;
     uint ownerFeeReward_ = 5;
     uint marketingFeeReward_ = 5;
     uint holdersFeeReward_ = 5;
     uint burnedFeePercent_ = 3;
     uint nativeTokenFee_ = 2;
     uint burnedTokens;
+    
     uint totalFee_ = ownerFeeReward_ + marketingFeeReward_ + holdersFeeReward_ + burnedFeePercent_ + nativeTokenFee_ ;
 
 
@@ -54,22 +55,34 @@ contract ProjectFee is IERC20, Ownable{
     }
 
     function transfer(address recipient, uint256 numTokens) public override returns (bool){
-        require(numTokens <=balances[msg.sender]);
-        balances[msg.sender]=balances[msg.sender] - (numTokens);
-        
-        uint ownerReward = (ownerFeeReward_ * numTokens ) / 100;
-        uint marketingReward = (marketingFeeReward_ * numTokens) / 100;
-        uint burnedAmount = (burnedFeePercent_ * numTokens) / 100 ;
-        burnedTokens += burnedAmount;
-        totalSupply_ -= burnedAmount;
-        balances[owner()] += ownerReward;
-        balances[marketingAddress] += marketingReward;
+        determinePartOfPool();
+        require(numTokens <=balances[msg.sender]); 
+        if(isExcluded[msg.sender] !=false){
+            balances[msg.sender]=balances[msg.sender] - (numTokens);
+            balances[recipient]=balances[recipient] + (numTokens);
+            emit Transfer(msg.sender, recipient, numTokens);
+            return true;
+        }
+        else{
+            balances[msg.sender]=balances[msg.sender] - (numTokens);
 
+            //calculating part for owner
+            uint ownerReward = (ownerFeeReward_ * numTokens ) / 100;
+            //calculating part for marketing address
+            uint marketingReward = (marketingFeeReward_ * numTokens) / 100;
+            //calculating part to burn
+            uint burnedAmount = (burnedFeePercent_ * numTokens) / 100 ;
+            
+            burnedTokens += burnedAmount;
+            totalSupply_ -= burnedAmount;
+            balances[owner()] += ownerReward;
+            balances[marketingAddress] += marketingReward;
 
-        uint amountToRecipient = numTokens - (ownerReward + burnedTokens);
-        balances[recipient] += amountToRecipient;
-        emit Transfer(msg.sender, recipient, numTokens);
-        return true;
+            uint amountToRecipient = numTokens - (ownerReward + burnedTokens);
+            balances[recipient] += amountToRecipient;
+            emit Transfer(msg.sender, recipient, numTokens);
+            return true;
+        }
     }
 
     function approve(address delegate, uint256 numTokens) public override returns (bool){
@@ -136,5 +149,22 @@ contract ProjectFee is IERC20, Ownable{
     function viewBurnedTokens()public view returns(uint){
         return burnedTokens;
 
+    }
+    function excludeAddress(address _newExcluded)public onlyOwner{
+        isExcluded[_newExcluded] = true;
+    }
+
+    function isAddressExcluded() public view returns(bool){
+        return isExcluded[msg.sender];
+    }
+
+    function determinePartOfPool()public onlyOwner{
+        uint balance = balances[msg.sender];
+        uint part = (balance * 100 ) / totalSupply_;
+        partOfPool[msg.sender] = part;
+
+    }
+    function viewPartOfPool()public view returns(uint){
+        return partOfPool[msg.sender];
     }
 }
