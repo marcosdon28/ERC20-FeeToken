@@ -21,7 +21,6 @@ OWNABLE : https://github.com/marcosdon28/ERC20-FeeToken/blob/79ac19bab66f45c7c70
 
 
 pending functions:
-includeAddress() to include address again into transfer fees
 nativeChainTokenFee take a fee of the ERC20 token and convert it into native chain token
 
 
