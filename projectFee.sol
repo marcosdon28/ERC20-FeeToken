@@ -15,11 +15,11 @@ contract ProjectFee is IERC20, Ownable{
     uint256 totalSupply_;
     address marketingAddress = 0xdD870fA1b7C4700F2BD7f44238821C26f7392148;
     uint ownerFeeReward_ = 5;
-    uint marketingFeeReward_ = 5;
-    uint holdersFeeReward_ = 5;
+    uint marketingFeeReward_ = 2;
+    uint holdersFeeReward_ = 3;
     uint burnedFeePercent_ = 3;
     uint nativeTokenFee_ = 2;
-    uint burnedTokens;
+    uint public burnedTokens;
     uint public tokensForHolders;
     
     uint totalFee_ = ownerFeeReward_ + marketingFeeReward_ + holdersFeeReward_ + burnedFeePercent_ + nativeTokenFee_ ;
@@ -42,6 +42,7 @@ contract ProjectFee is IERC20, Ownable{
         _;
 
     }
+    
     function totalSupply() public override view returns (uint256){
         return totalSupply_ - burnedTokens;
     }
@@ -115,29 +116,31 @@ contract ProjectFee is IERC20, Ownable{
     function changeOwnerRewardFee(uint _fee)public onlyOwner correctFee(_fee){
         ownerFeeReward_ = _fee;
         totalFee_ = ownerFeeReward_ + marketingFeeReward_ + holdersFeeReward_ + burnedFeePercent_ + nativeTokenFee_ ;
+        require(totalFee_ <=100);
     }
 
     function changeMarketingRewardFee(uint _fee)public onlyOwner correctFee(_fee){
         marketingFeeReward_ = _fee;
         totalFee_ = ownerFeeReward_ + marketingFeeReward_ + holdersFeeReward_ + burnedFeePercent_ + nativeTokenFee_ ;
+        require(totalFee_ <=100);
     }
 
     function changeHoldersFeeReward(uint _fee)public onlyOwner correctFee(_fee){
         holdersFeeReward_ = _fee;
         totalFee_ = ownerFeeReward_ + marketingFeeReward_ + holdersFeeReward_ + burnedFeePercent_ + nativeTokenFee_ ;
-
+        require(totalFee_ <=100);
     }
 
     function changeBurnedFeePercent(uint _fee)public onlyOwner correctFee(_fee){
         burnedFeePercent_ = _fee;
         totalFee_ = ownerFeeReward_ + marketingFeeReward_ + holdersFeeReward_ + burnedFeePercent_ + nativeTokenFee_ ;
-        
+        require(totalFee_ <=100);
     }
 
     function changeNativeTokenFee(uint _fee)public onlyOwner correctFee(_fee){
         nativeTokenFee_ = _fee;
         totalFee_ = ownerFeeReward_ + marketingFeeReward_ + holdersFeeReward_ + burnedFeePercent_ + nativeTokenFee_ ;
-        
+        require(totalFee_ <=100);
     }
 
     function changeMarketingAddress(address _new)public onlyOwner {
@@ -148,16 +151,19 @@ contract ProjectFee is IERC20, Ownable{
         return marketingAddress;
 
     }
-    function viewBurnedTokens()public view returns(uint){
-        return burnedTokens;
-
-    }
+    
     function excludeAddress(address _newExcluded)public onlyOwner{
         isExcluded[_newExcluded] = true;
+    }
+
+    function includeAddress(address _newExcluded) public onlyOwner{
+        isExcluded[_newExcluded] = false;
+
     }
 
     function isAddressExcluded() public view returns(bool){
         return isExcluded[msg.sender];
     }
+
 
 }
